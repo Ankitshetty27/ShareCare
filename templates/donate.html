@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="donation-container">
+
+<h2>Donate Food or Clothes</h2>
+
+<p class="subtitle">
+Your donation will be routed automatically to the nearest verified NGO.
+</p>
+
+<form method="POST" class="donation-form">
+
+<div class="form-grid">
+
+<div class="form-group">
+<label>Full Name</label>
+<input type="text" name="name" required>
+</div>
+
+<div class="form-group">
+<label>Donation Type</label>
+<select name="item_type" id="item_type" required>
+
+<option value="">-- Select --</option>
+
+<option value="food"> Food</option>
+<option value="clothes"> Clothes</option>
+
+</select>
+</div>
+
+<div class="form-group">
+<label>Quantity</label>
+<input type="number" name="quantity" min="10" required>
+</div>
+
+<div class="form-group">
+<label>Condition</label>
+<select name="condition" id="condition" required>
+<option value="">Select condition</option>
+<option value="fresh" data-type="food">Fresh</option>
+<option value="medium" data-type="food">Medium</option>
+<option value="low" data-type="food">Low</option>
+<option value="contaminated" data-type="food">Contaminated</option>
+<option value="wearable" data-type="clothes">Wearable</option>
+<option value="repairable" data-type="clothes">Repairable</option>
+<option value="recycle" data-type="clothes">Recycle</option>
+</select>
+</div>
+
+
+<div class="form-group">
+<label>Contact Number</label>
+<input type="tel" name="phone" required>
+</div>
+
+<div class="form-group">
+<label>Your Address / Area</label>
+<input type="text" name="location" required>
+</div>
+
+</div>
+
+<input type="hidden" id="latitude" name="latitude">
+<input type="hidden" id="longitude" name="longitude">
+
+<div class="form-group">
+<label>Select NGO</label>
+<select name="assigned_ngo" id="assigned_ngo">
+<option>Goonj</option>
+<option>Feeding India</option>
+<option>Akshaya Patra Foundation</option>
+<option>Smile Foundation</option>
+</select>
+</div>
+
+<p id="location-status">Getting location...</p>
+<div id="map"></div>
+<p id="nearest-ngo"></p>
+
+<div class="terms-inline">
+<label class="checkbox-container">
+<input type="checkbox" id="terms" name="terms" required>
+<span class="checkmark"></span>
+</label>
+
+<label for="terms" class="terms-text">
+I agree to 
+<span class="terms-link" onclick="openTerms()">Terms & Conditions</span>
+</label>
+</div>
+
+<button type="submit" class="submit-btn">Submit Donation</button>
+
+</form>
+</div>
+
+<!-- TERMS MODAL -->
+<div id="termsModal" class="modal">
+<div class="modal-content">
+<h3>Terms & Conditions</h3>
+<p>
+• Food must be fresh and safe<br>
+• Clothes must be usable<br>
+• Correct location required<br>
+• NGOs can reject unsafe items<br>
+• Pickup depends on availability
+</p>
+<button onclick="closeTerms()">Close</button>
+</div>
+</div>
+
+<style>
+
+body{
+background:linear-gradient(135deg,#0f172a,#1e293b);
+color:white;
+font-family:sans-serif;
+}
+
+.donation-container{
+max-width:1000px;
+margin:auto;
+padding:20px;
+}
+
+.subtitle{
+color:#cbd5f5;
+}
+
+/* CARD */
+.donation-form{
+background:rgba(255,255,255,0.05);
+backdrop-filter:blur(20px);
+padding:25px;
+border-radius:20px;
+box-shadow:0 0 40px rgba(99,102,241,0.2);
+transition:0.3s;
+}
+
+.donation-form:hover{
+transform:translateY(-5px);
+box-shadow:0 0 60px rgba(99,102,241,0.4);
+}
+
+/* GRID */
+.form-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+gap:15px;
+}
+
+/* FORM GROUP */
+.form-group{
+display:flex;
+flex-direction:column;
+gap:5px;
+}
+
+/* INPUT */
+input,select{
+padding:10px;
+border-radius:10px;
+border:1.5px solid rgba(255,255,255,0.25);
+background:rgba(30,41,59,0.95);
+color:white;
+}
+
+input::placeholder{
+color:#cbd5f5;
+}
+
+input:hover,select:hover{
+border-color:#818cf8;
+}
+
+input:focus,select:focus{
+outline:none;
+border:1.5px solid #6366f1;
+box-shadow:0 0 8px rgba(99,102,241,0.6);
+}
+
+/* DROPDOWN FIX */
+select{
+appearance:none;
+background:#1e293b;
+color:white;
+background-image:url("data:image/svg+xml;utf8,<svg fill='white' height='20' viewBox='0 0 20 20' width='20'><path d='M5 7l5 5 5-5z'/></svg>");
+background-repeat:no-repeat;
+background-position:right 10px center;
+}
+
+select option{
+background:#1e293b;
+color:white;
+}
+
+/* MAP */
+#map{
+height:300px;
+margin-top:10px;
+border-radius:12px;
+}
+
+/* ROUTE PANEL */
+.leaflet-routing-container{
+background:#0f172a !important;
+color:white !important;
+border-radius:12px;
+box-shadow:0 0 15px rgba(0,0,0,0.5);
+padding:10px;
+}
+
+.leaflet-routing-container h2,
+.leaflet-routing-container h3,
+.leaflet-routing-container table{
+color:white !important;
+}
+
+.leaflet-routing-container .leaflet-routing-alt{
+background:#1e293b !important;
+color:#e2e8f0 !important;
+border-radius:10px;
+padding:10px;
+}
+
+.leaflet-routing-alt h2{
+color:#22c55e !important;
+}
+
+.leaflet-routing-container table tr{
+border-bottom:1px solid rgba(255,255,255,0.1);
+}
+
+.leaflet-routing-container table tr:hover{
+background:rgba(99,102,241,0.2);
+}
+
+/* TERMS */
+.terms-inline{
+display:flex;
+align-items:center;
+gap:10px;
+margin-top:15px;
+}
+
+.checkbox-container input{
+display:none;
+}
+
+.checkmark{
+width:20px;
+height:20px;
+border-radius:6px;
+border:2px solid #818cf8;
+display:inline-block;
+position:relative;
+}
+
+.checkbox-container input:checked + .checkmark{
+background:#6366f1;
+}
+
+.checkbox-container input:checked + .checkmark::after{
+content:"✓";
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+color:white;
+}
+
+/* BUTTON */
+.submit-btn{
+width:100%;
+margin-top:20px;
+padding:12px;
+border:none;
+border-radius:12px;
+background:linear-gradient(135deg,#6366f1,#22c55e);
+color:white;
+font-size:16px;
+cursor:pointer;
+}
+
+/* MODAL */
+.modal{
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.7);
+justify-content:center;
+align-items:center;
+}
+
+.modal-content{
+background:#1e293b;
+padding:20px;
+border-radius:15px;
+}
+
+.terms-link{
+color:#22c55e;
+cursor:pointer;
+}
+
+</style>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+<script>
+
+function openTerms(){
+document.getElementById("termsModal").style.display="flex";
+}
+
+function closeTerms(){
+document.getElementById("termsModal").style.display="none";
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+
+const ngos=[
+{name:"Goonj",lat:19.0760,lng:72.8777},
+{name:"Feeding India",lat:19.2183,lng:72.9781},
+{name:"Akshaya Patra Foundation",lat:19.0330,lng:72.8567},
+{name:"Smile Foundation",lat:19.1197,lng:72.8464}
+];
+
+let routingControl = null; // 🔥 prevent multiple routes
+
+function distance(a,b,c,d){
+const R=6371;
+const dLat=(c-a)*Math.PI/180;
+const dLon=(d-b)*Math.PI/180;
+const x=Math.sin(dLat/2)**2+
+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dLon/2)**2;
+return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+
+function findNearest(lat,lng){
+let min=999,nearest;
+ngos.forEach(n=>{
+let d=distance(lat,lng,n.lat,n.lng);
+if(d<min){min=d;nearest=n;}
+});
+document.getElementById("assigned_ngo").value=nearest.name;
+document.getElementById("nearest-ngo").innerHTML=
+"Nearest NGO: <b>"+nearest.name+"</b> ("+min.toFixed(2)+" km)";
+}
+
+navigator.geolocation.getCurrentPosition(pos=>{
+
+let lat = pos.coords.latitude;
+let lng = pos.coords.longitude;
+
+/* 🔥 SAVE TO FORM (THIS WAS MISSING) */
+document.getElementById("latitude").value = lat;
+document.getElementById("longitude").value = lng;
+
+let map=L.map("map").setView([lat,lng],12);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
+/* USER MARKER */
+let userIcon=L.icon({
+iconUrl:"https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+iconSize:[32,32]
+});
+
+L.marker([lat,lng],{icon:userIcon})
+.addTo(map)
+.bindPopup("<b>Your Location</b>");
+
+/* NGO MARKERS */
+ngos.forEach(n=>{
+
+let dist=distance(lat,lng,n.lat,n.lng).toFixed(2);
+
+let ngoIcon=L.icon({
+iconUrl:"https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+iconSize:[32,32]
+});
+
+let m=L.marker([n.lat,n.lng],{icon:ngoIcon}).addTo(map);
+
+/* 🔥 POPUP WITH STYLE */
+m.bindPopup(`
+<div style="text-align:center;">
+    <h3 style="margin:5px 0;color:#22c55e;">${n.name}</h3>
+    <p style="margin:0;color:#e2e8f0;">
+        Distance: <b>${dist} km</b>
+    </p>
+    <small style="color:#94a3b8;">Click for route</small>
+</div>
+`);
+
+/* 🔥 TOOLTIP (ALWAYS VISIBLE) */
+m.bindTooltip(`${n.name} - ${dist} km`, {
+    permanent: true,
+    direction: "top",
+    offset: [0, -10]
+});
+
+/* 🔥 ROUTE (NO STACKING) */
+m.on("click",()=>{
+
+if(routingControl){
+map.removeControl(routingControl);
+}
+
+routingControl = L.Routing.control({
+waypoints:[
+L.latLng(lat,lng),
+L.latLng(n.lat,n.lng)
+],
+routeWhileDragging:false
+}).addTo(map);
+
+});
+
+});
+
+findNearest(lat,lng);
+
+},()=>{
+document.getElementById("location-status").innerText="Location access denied ❌";
+});
+
+});
+
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+const conditionData = {
+    food: [
+        { value: "fresh", text: "Fresh" },
+        { value: "medium", text: "Medium" },
+        { value: "low", text: "Low" },
+        { value: "contaminated", text: "Contaminated" }
+    ],
+    clothes: [
+        { value: "wearable", text: "Wearable" },
+        { value: "repairable", text: "Repairable" },
+        { value: "recycle", text: "Recycle" }
+    ]
+};
+
+const typeSelect = document.getElementById("item_type");
+const conditionSelect = document.getElementById("condition");
+
+typeSelect.addEventListener("change", function () {
+    const selected = this.value;
+
+    conditionSelect.innerHTML = "";
+
+    let defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "Select condition";
+    conditionSelect.appendChild(defaultOption);
+
+    if (conditionData[selected]) {
+        conditionData[selected].forEach(item => {
+            let option = document.createElement("option");
+            option.value = item.value;
+            option.textContent = item.text;
+            conditionSelect.appendChild(option);
+        });
+    }
+});
+
+});
+</script>
+
+{% endblock %}

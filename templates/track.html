@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Live Pickup Tracking</h2>
+
+{% if donation.status == "pending" %}
+
+<p style="font-size:16px;">
+⏳ Your donation request has been sent to the NGO.<br>
+Tracking will begin once the NGO accepts your pickup request.
+</p>
+
+{% else %}
+
+<p style="font-size:16px; margin-bottom:10px;">
+🚚 Driver is on the way to pick up your donation
+</p>
+
+<div id="map" style="height:420px;border-radius:10px;"></div>
+
+<p id="eta" style="margin-top:10px;font-weight:500;"></p>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+<script>
+
+/* ================= DONATION LOCATION ================= */
+
+const donorLat = {{ donation.latitude }};
+const donorLng = {{ donation.longitude }};
+
+/* ================= NGO LOCATIONS ================= */
+
+const ngoLocations = {
+
+"Goonj": {lat:19.0760,lng:72.8777},
+"Feeding India": {lat:19.2183,lng:72.9781},
+"Akshaya Patra Foundation": {lat:19.0330,lng:72.8567},
+"Smile Foundation": {lat:19.1197,lng:72.8464}
+
+};
+
+const selectedNGO = "{{ donation.assigned_ngo }}";
+
+const ngoLat = ngoLocations[selectedNGO].lat;
+const ngoLng = ngoLocations[selectedNGO].lng;
+
+/* ================= MAP ================= */
+
+const map = L.map('map').setView([donorLat, donorLng], 12);
+
+L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{ attribution: '&copy; OpenStreetMap contributors' }
+).addTo(map);
+
+/* ================= MARKERS ================= */
+
+L.marker([donorLat, donorLng])
+.addTo(map)
+.bindPopup("📦 Donation Pickup Location")
+.openPopup();
+
+L.marker([ngoLat, ngoLng])
+.addTo(map)
+.bindPopup("🏢 " + selectedNGO + " (NGO Start Point)");
+
+/* ================= DRIVER ICON ================= */
+
+const driverIcon = L.icon({
+iconUrl:"https://cdn-icons-png.flaticon.com/512/743/743131.png",
+iconSize:[40,40]
+});
+
+/* ================= DRIVER MARKER ================= */
+
+let driverLat = ngoLat;
+let driverLng = ngoLng;
+
+const driverMarker = L.marker([driverLat, driverLng],{
+icon:driverIcon
+}).addTo(map)
+.bindPopup("🚚 Pickup Driver");
+
+/* ================= ROUTE ================= */
+
+let routeCoords = [];
+let routeIndex = 0;
+
+const control = L.Routing.control({
+
+waypoints: [
+L.latLng(ngoLat, ngoLng),
+L.latLng(donorLat, donorLng)
+],
+
+lineOptions:{
+styles:[{color:"green",weight:5}]
+},
+
+addWaypoints:false,
+draggableWaypoints:false,
+fitSelectedRoutes:true
+
+}).addTo(map);
+
+/* ================= WHEN ROUTE IS CALCULATED ================= */
+
+control.on('routesfound', function(e){
+
+const route = e.routes[0];
+
+/* REAL DISTANCE AND TIME */
+
+const totalDistance = route.summary.totalDistance / 1000;
+const totalTime = route.summary.totalTime / 60;
+
+/* SHOW INITIAL ETA */
+
+document.getElementById("eta").innerHTML =
+"📏 Total Distance: " + totalDistance.toFixed(2) +
+" km | ⏱ Estimated Time: " + Math.round(totalTime) + " mins";
+
+/* GET ROUTE PATH */
+
+routeCoords = route.coordinates;
+
+});
+
+/* ================= DRIVER MOVEMENT ================= */
+
+function moveDriver(){
+
+if(routeIndex >= routeCoords.length) return;
+
+const point = routeCoords[routeIndex];
+
+driverMarker.setLatLng([point.lat, point.lng]);
+
+const remaining = routeCoords.length - routeIndex;
+
+const remainingDistance =
+(remaining / routeCoords.length) * 100;
+
+const eta = Math.round(remainingDistance / 10);
+
+document.getElementById("eta").innerHTML =
+"🚚 Driver approaching | ⏱ ETA: " + eta + " mins";
+
+routeIndex += 5;
+
+}
+
+/* Move driver every 2 seconds */
+
+setInterval(moveDriver,2000);
+
+</script>
+
+{% endif %}
+
+{% endblock %}
+

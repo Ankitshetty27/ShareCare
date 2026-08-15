@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ShareCare™</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<!-- ✅ PASS VALUE SAFELY USING DATA ATTRIBUTE -->
+<body data-is-home="{{ is_home | default(false) }}">
+
+<!-- ================= OTP POPUP ================= -->
+
+<div id="otpModal" class="modal">
+    <div class="modal-content">
+
+        <h3>🔐 Quick Registration</h3>
+        <p>Enter your Email to continue</p>
+
+        <!-- EMAIL INPUT -->
+        <input type="email" id="contact" placeholder="Enter Email">
+
+        <button onclick="sendOTP()">Send OTP</button>
+
+        <!-- OTP SECTION -->
+        <div id="otpSection" style="display:none;">
+            <input type="text" id="otp" placeholder="Enter OTP">
+            <button onclick="verifyOTP()">Verify</button>
+        </div>
+
+    </div>
+</div>
+
+<!-- ================= NAVBAR ================= -->
+
+<nav>
+    <div class="nav-left">
+        <span class="logo">ShareCare™</span>
+    </div>
+
+    <div class="nav-right">
+        <a href="/">Home</a>
+        <a href="/donate">Donate</a>
+        <a href="/ngo">NGO Dashboard</a>
+        <a href="/analytics">Analytics</a>
+        <a href="/admin">Admin</a>
+        <a href="/contact">Contact</a>
+    </div>
+</nav>
+
+<!-- ================= CONTENT ================= -->
+
+<div class="container">
+    {% block content %}{% endblock %}
+</div>
+
+<!-- ================= FOOTER ================= -->
+
+<footer>
+    <p>© 2026 ShareCare™ | Academic Project | Sustainable Community Welfare</p>
+</footer>
+
+<!-- ================= STYLE ================= -->
+
+<style>
+.modal{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.7);
+    display:none;
+    justify-content:center;
+    align-items:center;
+    z-index:9999;
+}
+
+.modal-content{
+    background:#1f2937;
+    padding:25px;
+    border-radius:12px;
+    text-align:center;
+    color:white;
+    width:320px;
+    box-shadow:0 0 20px rgba(0,0,0,0.5);
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn{
+    from{transform:scale(0.9); opacity:0;}
+    to{transform:scale(1); opacity:1;}
+}
+
+.modal-content input{
+    width:100%;
+    padding:10px;
+    margin:10px 0;
+    border:none;
+    border-radius:6px;
+    background:#111827;
+    color:white;
+}
+
+.modal-content button{
+    background:#22c55e;
+    color:white;
+    border:none;
+    padding:10px;
+    width:100%;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.modal-content button:hover{
+    opacity:0.8;
+}
+</style>
+
+<!-- ================= SCRIPT ================= -->
+
+<script>
+
+// ✅ READ VALUE FROM BODY (NO JINJA INSIDE JS)
+document.addEventListener("DOMContentLoaded", function(){
+
+    const isHome = document.body.dataset.isHome === "True";
+
+    if(isHome){
+        document.getElementById("otpModal").style.display = "flex";
+    }
+
+});
+
+// 🔥 SEND OTP
+function sendOTP(){
+
+    let contact = document.getElementById("contact").value;
+
+    if(contact.trim() === ""){
+        alert("Enter Email");
+        return;
+    }
+
+    if(!contact.includes("@")){
+        alert("Enter valid email");
+        return;
+    }
+
+    fetch("/send-otp", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: "contact=" + encodeURIComponent(contact)
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        if(data.status === "sent"){
+            document.getElementById("otpSection").style.display = "block";
+            alert("OTP sent to your email 📧");
+        } else {
+            alert("Error sending OTP ❌");
+        }
+
+    })
+    .catch(() => {
+        alert("Server error ❌");
+    });
+}
+
+// 🔐 VERIFY OTP
+function verifyOTP(){
+
+    let otp = document.getElementById("otp").value;
+
+    if(otp.trim() === ""){
+        alert("Enter OTP");
+        return;
+    }
+
+    fetch("/verify-otp", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: "otp=" + encodeURIComponent(otp)
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        if(data.status === "success"){
+
+            alert("Verified ✅");
+
+            localStorage.setItem("verified", "true");
+
+            document.getElementById("otpModal").style.display = "none";
+
+        } else {
+            alert("Wrong OTP ❌");
+        }
+
+    })
+    .catch(() => {
+        alert("Server error ❌");
+    });
+}
+
+</script>
+
+</body>
+</html>

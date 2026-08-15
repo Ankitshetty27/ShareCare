@@ -1,0 +1,374 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="dashboard-container">
+
+<h2>NGO Dashboard</h2>
+
+<p class="subtitle">
+Donations assigned to your NGO
+</p>
+
+<!-- LEAFLET -->
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+const ngoLat = 19.0760;
+const ngoLng = 72.8777;
+</script>
+
+<!-- ================= FOOD ================= -->
+
+<h3>🍱 Food Donations</h3>
+
+{% set food_list = donations
+| selectattr("item_type","equalto","food")
+| rejectattr("condition","equalto","contaminated")
+| list %}
+
+{% if food_list %}
+
+{% for d in food_list %}
+
+<div class="card">
+
+<span class="badge food">🍱 Food</span>
+<span class="status {{ d.status }}">{{ d.status | capitalize }}</span>
+
+<p><b>Donor:</b> {{ d.name }}</p>
+<p><b>Quantity:</b> {{ d.quantity }}</p>
+<p><b>Condition:</b> {{ d.condition | capitalize }}</p>
+
+{% if d.expiry_hours %}
+
+<p><b>Expiry Window:</b> {{ d.expiry_hours }} hours</p>
+
+{% if d.expiry_hours <= 2 %}
+<span class="priority high">🔥 High Priority</span>
+{% elif d.expiry_hours <= 5 %}
+<span class="priority medium">⚠ Medium Priority</span>
+{% else %}
+<span class="priority low">✅ Low Priority</span>
+{% endif %}
+
+{% endif %}
+
+<p><b>Address:</b> {{ d.location }}</p>
+<p><b>Contact:</b> {{ d.phone }}</p>
+<p><b>Assigned NGO:</b> {{ d.assigned_ngo }}</p>
+
+<p class="distance" id="distance{{ d.id }}"></p>
+
+{% if d.latitude and d.longitude %}
+
+<div class="map-box"
+data-lat="{{ d.latitude }}"
+data-lng="{{ d.longitude }}"
+id="map{{ d.id }}">
+</div>
+
+{% endif %}
+
+<div class="actions">
+
+<a href="/accept/{{ d.id }}">
+<button class="accept-btn">Accept</button>
+</a>
+
+<a href="/reject/{{ d.id }}">
+<button class="reject-btn">Reject</button>
+</a>
+
+</div>
+
+</div>
+
+{% endfor %}
+
+{% else %}
+<p class="empty">No food donations available.</p>
+{% endif %}
+
+<!-- ================= CLOTHES ================= -->
+
+<h3>👕 Clothes Donations</h3>
+
+{% set clothes_list = donations
+| selectattr("item_type","equalto","clothes")
+| selectattr("condition","equalto","wearable")
+| list %}
+
+{% if clothes_list %}
+
+{% for d in clothes_list %}
+
+<div class="card">
+
+<span class="badge clothes">👕 Clothes</span>
+<span class="status {{ d.status }}">{{ d.status | capitalize }}</span>
+
+<p><b>Donor:</b> {{ d.name }}</p>
+<p><b>Quantity:</b> {{ d.quantity }}</p>
+<p><b>Address:</b> {{ d.location }}</p>
+<p><b>Contact:</b> {{ d.phone }}</p>
+<p><b>Assigned NGO:</b> {{ d.assigned_ngo }}</p>
+
+<p class="distance" id="distance{{ d.id }}"></p>
+
+{% if d.latitude is not none and d.longitude is not none %}
+
+<div class="map-box"
+data-lat="{{ d.latitude }}"
+data-lng="{{ d.longitude }}"
+id="map{{ d.id }}">
+</div>
+
+{% endif %}
+
+<div class="actions">
+
+<a href="/accept/{{ d.id }}">
+<button class="accept-btn">Accept</button>
+</a>
+
+<a href="/reject/{{ d.id }}">
+<button class="reject-btn">Reject</button>
+</a>
+
+</div>
+
+</div>
+
+{% endfor %}
+
+{% else %}
+<p class="empty">No clothing donations available.</p>
+{% endif %}
+
+<!-- ================= SCRIPT ================= -->
+
+<script>
+
+function getDistance(lat1, lon1, lat2, lon2){
+const R = 6371;
+const dLat = (lat2-lat1) * Math.PI/180;
+const dLon = (lon2-lon1) * Math.PI/180;
+
+const a =
+Math.sin(dLat/2)**2 +
+Math.cos(lat1*Math.PI/180) *
+Math.cos(lat2*Math.PI/180) *
+Math.sin(dLon/2)**2;
+
+return R * 2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+document.addEventListener("DOMContentLoaded",function(){
+
+const maps = document.querySelectorAll(".map-box");
+
+maps.forEach(function(box){
+
+const lat = parseFloat(box.dataset.lat);
+const lng = parseFloat(box.dataset.lng);
+
+const map = L.map(box.id).setView([lat,lng],14);
+
+/* DARK MAP */
+L.tileLayer(
+'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+).addTo(map);
+
+/* 🔴 DONATION MARKER */
+const donationIcon = L.icon({
+    iconUrl: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+    iconSize: [32,32]
+});
+
+L.marker([lat,lng], {icon: donationIcon})
+.addTo(map)
+.bindPopup("<b>Donation Location</b>")
+.openPopup();
+
+/* 🔵 NGO MARKER */
+const ngoIcon = L.icon({
+    iconUrl: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+    iconSize: [32,32]
+});
+
+L.marker([ngoLat, ngoLng], {icon: ngoIcon})
+.addTo(map)
+.bindPopup("<b>Your NGO</b>");
+
+/* 🚗 ROUTE */
+L.Routing.control({
+    waypoints: [
+        L.latLng(ngoLat, ngoLng),
+        L.latLng(lat, lng)
+    ],
+    routeWhileDragging: false,
+    show: false
+}).addTo(map);
+
+/* DISTANCE */
+const distance = getDistance(ngoLat, ngoLng, lat, lng);
+const id = box.id.replace("map","");
+
+document.getElementById("distance"+id).innerHTML =
+"📍 Distance: " + distance.toFixed(2) + " km";
+
+});
+
+});
+
+</script>
+
+<!-- ================= PREMIUM STYLE ================= -->
+
+<style>
+
+body{
+background:linear-gradient(135deg,#0f172a,#1e293b);
+color:white;
+font-family:sans-serif;
+}
+
+.dashboard-container{
+max-width:1000px;
+margin:auto;
+padding:20px;
+}
+
+.subtitle{
+color:#cbd5f5;
+margin-bottom:20px;
+}
+
+/* CARD */
+.card{
+background:rgba(255,255,255,0.05);
+backdrop-filter:blur(15px);
+padding:20px;
+border-radius:18px;
+margin-bottom:20px;
+box-shadow:0 0 30px rgba(99,102,241,0.2);
+transition:0.3s;
+position:relative;
+}
+
+.card:hover{
+transform:translateY(-5px);
+box-shadow:0 0 50px rgba(99,102,241,0.4);
+}
+
+/* BADGES */
+.badge{
+padding:5px 10px;
+border-radius:10px;
+font-size:12px;
+}
+
+.food{
+background:rgba(34,197,94,0.2);
+color:#22c55e;
+}
+
+.clothes{
+background:rgba(99,102,241,0.2);
+color:#6366f1;
+}
+
+/* STATUS */
+.status{
+position:absolute;
+right:15px;
+top:15px;
+padding:5px 10px;
+border-radius:10px;
+font-size:12px;
+}
+
+.status.pending{background:#facc15;color:black;}
+.status.accepted{background:#22c55e;}
+.status.rejected{background:#ef4444;}
+
+/* PRIORITY */
+.priority{
+display:inline-block;
+margin-top:5px;
+padding:4px 10px;
+border-radius:10px;
+font-size:12px;
+}
+
+.priority.high{background:#ef4444;}
+.priority.medium{background:#facc15;color:black;}
+.priority.low{background:#22c55e;}
+
+/* MAP */
+.map-box{
+height:200px;
+margin-top:10px;
+border-radius:12px;
+overflow:hidden;
+}
+
+/* BUTTONS */
+.actions{
+display:flex;
+gap:10px;
+margin-top:15px;
+}
+
+.accept-btn{
+flex:1;
+background:linear-gradient(135deg,#22c55e,#4ade80);
+border:none;
+padding:10px;
+border-radius:10px;
+color:white;
+cursor:pointer;
+transition:0.3s;
+}
+
+.reject-btn{
+flex:1;
+background:linear-gradient(135deg,#ef4444,#f87171);
+border:none;
+padding:10px;
+border-radius:10px;
+color:white;
+cursor:pointer;
+transition:0.3s;
+}
+
+.accept-btn:hover,.reject-btn:hover{
+transform:scale(1.05);
+box-shadow:0 0 15px rgba(255,255,255,0.2);
+}
+
+/* DISTANCE */
+.distance{
+margin-top:8px;
+color:#cbd5f5;
+}
+
+/* EMPTY */
+.empty{
+color:#94a3b8;
+margin-top:10px;
+}
+
+</style>
+
+{% endblock %}
+
+
+
+

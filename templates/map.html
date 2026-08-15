@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Donation Locations</h2>
+<div id="map" style="height: 500px;"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<script>
+var map = L.map('map').setView([20.5937, 78.9629], 5); // India
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+fetch('/api/donations')
+.then(res => res.json())
+.then(data => {
+    data.forEach(d => {
+        L.marker([d.latitude, d.longitude])
+          .addTo(map)
+          .bindPopup(`
+            <b>${d.donation_type.toUpperCase()}</b><br>
+            Quantity: ${d.quantity}
+          `);
+    });
+});
+</script>
+
+{% endblock %}
